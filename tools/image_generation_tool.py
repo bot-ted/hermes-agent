@@ -972,11 +972,11 @@ def _dispatch_to_plugin_provider(prompt: str, aspect_ratio: str):
     return json.dumps(result)
 
 
-def _handle_image_generate(args, **kw):
-    prompt = args.get("prompt", "")
+def _handle_image_generate(**kwargs):
+    prompt = kwargs.get("prompt", "")
     if not prompt:
         return tool_error("prompt is required for image generation")
-    aspect_ratio = args.get("aspect_ratio", DEFAULT_ASPECT_RATIO)
+    aspect_ratio = kwargs.get("aspect_ratio", DEFAULT_ASPECT_RATIO)
 
     # Route to a plugin-registered provider if one is active (and it's
     # not the in-tree FAL path).

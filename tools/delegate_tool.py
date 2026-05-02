@@ -693,16 +693,16 @@ def _build_child_progress_callback(
             "goal": goal_label,
         }
         if subagent_id is not None:
-            kw["subagent_id"] = subagent_id
+            kwargs["subagent_id"] = subagent_id
         if parent_id is not None:
-            kw["parent_id"] = parent_id
+            kwargs["parent_id"] = parent_id
         if depth is not None:
-            kw["depth"] = depth
+            kwargs["depth"] = depth
         if model is not None:
-            kw["model"] = model
+            kwargs["model"] = model
         if toolsets is not None:
-            kw["toolsets"] = list(toolsets)
-        kw["tool_count"] = _tool_count[0]
+            kwargs["toolsets"] = list(toolsets)
+        kwargs["tool_count"] = _tool_count[0]
         return kw
 
     def _relay(
@@ -2515,16 +2515,16 @@ registry.register(
     name="delegate_task",
     toolset="delegation",
     schema=DELEGATE_TASK_SCHEMA,
-    handler=lambda args, **kw: delegate_task(
-        goal=args.get("goal"),
-        context=args.get("context"),
-        toolsets=args.get("toolsets"),
-        tasks=args.get("tasks"),
-        max_iterations=args.get("max_iterations"),
-        acp_command=args.get("acp_command"),
-        acp_args=args.get("acp_args"),
-        role=args.get("role"),
-        parent_agent=kw.get("parent_agent"),
+    handler=lambda **kwargs: delegate_task(
+        goal=kwargs.get("goal"),
+        context=kwargs.get("context"),
+        toolsets=kwargs.get("toolsets"),
+        tasks=kwargs.get("tasks"),
+        max_iterations=kwargs.get("max_iterations"),
+        acp_command=kwargs.get("acp_command"),
+        acp_args=kwargs.get("acp_args"),
+        role=kwargs.get("role"),
+        parent_agent=kwargs.get("parent_agent"),
     ),
     check_fn=check_delegate_requirements,
     emoji="🔀",

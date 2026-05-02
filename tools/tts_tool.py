@@ -2183,9 +2183,9 @@ registry.register(
     name="text_to_speech",
     toolset="tts",
     schema=TTS_SCHEMA,
-    handler=lambda args, **kw: text_to_speech_tool(
-        text=args.get("text", ""),
-        output_path=args.get("output_path")),
+    handler=lambda **kwargs: text_to_speech_tool(
+        text=kwargs.get("text", ""),
+        output_path=kwargs.get("output_path")),
     check_fn=check_tts_requirements,
     emoji="🔊",
 )

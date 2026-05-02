@@ -60,7 +60,7 @@ def _check_feishu():
 
 
 def _handle_feishu_doc_read(args: dict, **kwargs) -> str:
-    doc_token = args.get("doc_token", "").strip()
+    doc_token = kwargs.get("doc_token", "").strip()
     if not doc_token:
         return tool_error("doc_token is required")
 

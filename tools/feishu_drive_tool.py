@@ -133,14 +133,14 @@ def _handle_list_comments(args: dict, **kwargs) -> str:
     if client is None:
         return tool_error("Feishu client not available")
 
-    file_token = args.get("file_token", "").strip()
+    file_token = kwargs.get("file_token", "").strip()
     if not file_token:
         return tool_error("file_token is required")
 
-    file_type = args.get("file_type", "docx") or "docx"
-    is_whole = args.get("is_whole", False)
-    page_size = args.get("page_size", 100)
-    page_token = args.get("page_token", "")
+    file_type = kwargs.get("file_type", "docx") or "docx"
+    is_whole = kwargs.get("is_whole", False)
+    page_size = kwargs.get("page_size", 100)
+    page_token = kwargs.get("page_token", "")
 
     queries = [
         ("file_type", file_type),
@@ -208,14 +208,14 @@ def _handle_list_replies(args: dict, **kwargs) -> str:
     if client is None:
         return tool_error("Feishu client not available")
 
-    file_token = args.get("file_token", "").strip()
-    comment_id = args.get("comment_id", "").strip()
+    file_token = kwargs.get("file_token", "").strip()
+    comment_id = kwargs.get("comment_id", "").strip()
     if not file_token or not comment_id:
         return tool_error("file_token and comment_id are required")
 
-    file_type = args.get("file_type", "docx") or "docx"
-    page_size = args.get("page_size", 100)
-    page_token = args.get("page_token", "")
+    file_type = kwargs.get("file_type", "docx") or "docx"
+    page_size = kwargs.get("page_size", 100)
+    page_token = kwargs.get("page_token", "")
 
     queries = [
         ("file_type", file_type),
@@ -280,13 +280,13 @@ def _handle_reply_comment(args: dict, **kwargs) -> str:
     if client is None:
         return tool_error("Feishu client not available")
 
-    file_token = args.get("file_token", "").strip()
-    comment_id = args.get("comment_id", "").strip()
-    content = args.get("content", "").strip()
+    file_token = kwargs.get("file_token", "").strip()
+    comment_id = kwargs.get("comment_id", "").strip()
+    content = kwargs.get("content", "").strip()
     if not file_token or not comment_id or not content:
         return tool_error("file_token, comment_id, and content are required")
 
-    file_type = args.get("file_type", "docx") or "docx"
+    file_type = kwargs.get("file_type", "docx") or "docx"
 
     body = {
         "content": {
@@ -351,12 +351,12 @@ def _handle_add_comment(args: dict, **kwargs) -> str:
     if client is None:
         return tool_error("Feishu client not available")
 
-    file_token = args.get("file_token", "").strip()
-    content = args.get("content", "").strip()
+    file_token = kwargs.get("file_token", "").strip()
+    content = kwargs.get("content", "").strip()
     if not file_token or not content:
         return tool_error("file_token and content are required")
 
-    file_type = args.get("file_type", "docx") or "docx"
+    file_type = kwargs.get("file_type", "docx") or "docx"
 
     body = {
         "file_type": file_type,

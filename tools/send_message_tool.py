@@ -144,14 +144,12 @@ SEND_MESSAGE_SCHEMA = {
 }
 
 
-def send_message_tool(args, **kw):
+def send_message_tool(action: str = "send", target: str = None, message: str = None, **kwargs):
     """Handle cross-channel send_message tool calls."""
-    action = args.get("action", "send")
-
     if action == "list":
         return _handle_list()
 
-    return _handle_send(args)
+    return _handle_send(target, message)
 
 
 def _handle_list():
@@ -163,10 +161,8 @@ def _handle_list():
         return json.dumps(_error(f"Failed to load channel directory: {e}"))
 
 
-def _handle_send(args):
+def _handle_send(target, message):
     """Send a message to a platform target."""
-    target = args.get("target", "")
-    message = args.get("message", "")
     if not target or not message:
         return tool_error("Both 'target' and 'message' are required when action='send'")
 

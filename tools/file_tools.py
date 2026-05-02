@@ -1090,33 +1090,33 @@ SEARCH_FILES_SCHEMA = {
 }
 
 
-def _handle_read_file(args, **kw):
-    tid = kw.get("task_id") or "default"
-    return read_file_tool(path=args.get("path", ""), offset=args.get("offset", 1), limit=args.get("limit", 500), task_id=tid)
+def _handle_read_file(**kwargs):
+    tid = kwargs.get("task_id") or "default"
+    return read_file_tool(path=kwargs.get("path", ""), offset=kwargs.get("offset", 1), limit=kwargs.get("limit", 500), task_id=tid)
 
 
-def _handle_write_file(args, **kw):
-    tid = kw.get("task_id") or "default"
-    return write_file_tool(path=args.get("path", ""), content=args.get("content", ""), task_id=tid)
+def _handle_write_file(**kwargs):
+    tid = kwargs.get("task_id") or "default"
+    return write_file_tool(path=kwargs.get("path", ""), content=kwargs.get("content", ""), task_id=tid)
 
 
-def _handle_patch(args, **kw):
-    tid = kw.get("task_id") or "default"
+def _handle_patch(**kwargs):
+    tid = kwargs.get("task_id") or "default"
     return patch_tool(
-        mode=args.get("mode", "replace"), path=args.get("path"),
-        old_string=args.get("old_string"), new_string=args.get("new_string"),
-        replace_all=args.get("replace_all", False), patch=args.get("patch"), task_id=tid)
+        mode=kwargs.get("mode", "replace"), path=kwargs.get("path"),
+        old_string=kwargs.get("old_string"), new_string=kwargs.get("new_string"),
+        replace_all=kwargs.get("replace_all", False), patch=kwargs.get("patch"), task_id=tid)
 
 
-def _handle_search_files(args, **kw):
-    tid = kw.get("task_id") or "default"
+def _handle_search_files(**kwargs):
+    tid = kwargs.get("task_id") or "default"
     target_map = {"grep": "content", "find": "files"}
-    raw_target = args.get("target", "content")
+    raw_target = kwargs.get("target", "content")
     target = target_map.get(raw_target, raw_target)
     return search_tool(
-        pattern=args.get("pattern", ""), target=target, path=args.get("path", "."),
-        file_glob=args.get("file_glob"), limit=args.get("limit", 50), offset=args.get("offset", 0),
-        output_mode=args.get("output_mode", "content"), context=args.get("context", 0), task_id=tid)
+        pattern=kwargs.get("pattern", ""), target=target, path=kwargs.get("path", "."),
+        file_glob=kwargs.get("file_glob"), limit=kwargs.get("limit", 50), offset=kwargs.get("offset", 0),
+        output_mode=kwargs.get("output_mode", "content"), context=kwargs.get("context", 0), task_id=tid)
 
 
 registry.register(name="read_file", toolset="file", schema=READ_FILE_SCHEMA, handler=_handle_read_file, check_fn=_check_file_reqs, emoji="📖", max_result_size_chars=float('inf'))

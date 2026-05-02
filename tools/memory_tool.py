@@ -571,12 +571,12 @@ registry.register(
     name="memory",
     toolset="memory",
     schema=MEMORY_SCHEMA,
-    handler=lambda args, **kw: memory_tool(
-        action=args.get("action", ""),
-        target=args.get("target", "memory"),
-        content=args.get("content"),
-        old_text=args.get("old_text"),
-        store=kw.get("store")),
+    handler=lambda **kwargs: memory_tool(
+        action=kwargs.get("action", ""),
+        target=kwargs.get("target", "memory"),
+        content=kwargs.get("content"),
+        old_text=kwargs.get("old_text"),
+        store=kwargs.get("store")),
     check_fn=check_memory_requirements,
     emoji="🧠",
 )

@@ -137,11 +137,11 @@ registry.register(
     name="browser_dialog",
     toolset="browser-cdp",
     schema=BROWSER_DIALOG_SCHEMA,
-    handler=lambda args, **kw: browser_dialog(
-        action=args.get("action", ""),
-        prompt_text=args.get("prompt_text"),
-        dialog_id=args.get("dialog_id"),
-        task_id=kw.get("task_id"),
+    handler=lambda **kwargs: browser_dialog(
+        action=kwargs.get("action", ""),
+        prompt_text=kwargs.get("prompt_text"),
+        dialog_id=kwargs.get("dialog_id"),
+        task_id=kwargs.get("task_id"),
     ),
     check_fn=_browser_dialog_check,
     emoji="💬",

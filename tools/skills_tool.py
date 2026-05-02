@@ -1477,18 +1477,18 @@ registry.register(
     name="skills_list",
     toolset="skills",
     schema=SKILLS_LIST_SCHEMA,
-    handler=lambda args, **kw: skills_list(
-        category=args.get("category"), task_id=kw.get("task_id")
+    handler=lambda **kwargs: skills_list(
+        category=kwargs.get("category"), task_id=kwargs.get("task_id")
     ),
     check_fn=check_skills_requirements,
     emoji="📚",
 )
-def _skill_view_with_bump(args, **kw):
+def _skill_view_with_bump(args, **kwargs):
     """Invoke skill_view, then bump view_count on success. Best-effort: a
     telemetry failure never breaks the tool call."""
-    name = args.get("name", "")
+    name = kwargs.get("name", "")
     result = skill_view(
-        name, file_path=args.get("file_path"), task_id=kw.get("task_id")
+        name, file_path=kwargs.get("file_path"), task_id=kwargs.get("task_id")
     )
     try:
         parsed = json.loads(result)

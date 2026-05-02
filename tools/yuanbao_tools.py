@@ -428,24 +428,24 @@ def _check_yuanbao():
     return _get_active_adapter() is not None
 
 
-async def _handle_yb_query_group_info(args, **kw):
+async def _handle_yb_query_group_info(**kwargs):
     return tool_result(await get_group_info(
-        group_code=args.get("group_code", ""),
+        group_code=kwargs.get("group_code", ""),
     ))
 
 
-async def _handle_yb_query_group_members(args, **kw):
+async def _handle_yb_query_group_members(**kwargs):
     return tool_result(await query_group_members(
-        group_code=args.get("group_code", ""),
-        action=args.get("action", "list_all"),
-        name=args.get("name", ""),
-        mention=bool(args.get("mention", False)),
+        group_code=kwargs.get("group_code", ""),
+        action=kwargs.get("action", "list_all"),
+        name=kwargs.get("name", ""),
+        mention=bool(kwargs.get("mention", False)),
     ))
 
 
-async def _handle_yb_send_dm(args, **kw):
+async def _handle_yb_send_dm(**kwargs):
     # Resolve group_code: prefer explicit arg, fallback to session context.
-    group_code = args.get("group_code", "")
+    group_code = kwargs.get("group_code", "")
     if not group_code:
         try:
             from gateway.session_context import get_session_env
@@ -457,7 +457,7 @@ async def _handle_yb_send_dm(args, **kw):
             pass
 
     # Parse media_files: list of {{"path": str, "is_voice": bool}} → List[Tuple[str, bool]]
-    raw_media = args.get("media_files") or []
+    raw_media = kwargs.get("media_files") or []
     media_files = []
     for item in raw_media:
         if isinstance(item, dict):
@@ -467,32 +467,32 @@ async def _handle_yb_send_dm(args, **kw):
 
     # Extract MEDIA:<path> tags embedded in the message text (LLM often puts
     # file paths there instead of using the media_files parameter).
-    message = args.get("message", "")
+    message = kwargs.get("message", "")
     from gateway.platforms.base import BasePlatformAdapter
     embedded_media, message = BasePlatformAdapter.extract_media(message)
     if embedded_media:
         media_files.extend(embedded_media)
 
     return tool_result(await send_dm(
-        group_code=group_code,        name=args.get("name", ""),
+        group_code=group_code,        name=kwargs.get("name", ""),
         message=message,
-        user_id=args.get("user_id", ""),
+        user_id=kwargs.get("user_id", ""),
         media_files=media_files or None,
     ))
 
 
-async def _handle_yb_search_sticker(args, **kw):
+async def _handle_yb_search_sticker(**kwargs):
     return tool_result(await search_sticker(
-        query=args.get("query", ""),
-        limit=args.get("limit", 10),
+        query=kwargs.get("query", ""),
+        limit=kwargs.get("limit", 10),
     ))
 
 
-async def _handle_yb_send_sticker(args, **kw):
+async def _handle_yb_send_sticker(**kwargs):
     return tool_result(await send_sticker(
-        sticker=args.get("sticker", ""),
-        chat_id=args.get("chat_id", ""),
-        reply_to=args.get("reply_to", ""),
+        sticker=kwargs.get("sticker", ""),
+        chat_id=kwargs.get("chat_id", ""),
+        reply_to=kwargs.get("reply_to", ""),
     ))
 
 

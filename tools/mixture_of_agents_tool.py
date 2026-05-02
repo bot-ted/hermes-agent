@@ -533,7 +533,7 @@ registry.register(
     name="mixture_of_agents",
     toolset="moa",
     schema=MOA_SCHEMA,
-    handler=lambda args, **kw: mixture_of_agents_tool(user_prompt=args.get("user_prompt", "")),
+    handler=lambda **kwargs: mixture_of_agents_tool(user_prompt=kwargs.get("user_prompt", "")),
     check_fn=check_moa_requirements,
     requires_env=["OPENROUTER_API_KEY"],
     is_async=True,

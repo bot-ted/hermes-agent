@@ -1611,10 +1611,10 @@ registry.register(
     name="execute_code",
     toolset="code_execution",
     schema=EXECUTE_CODE_SCHEMA,
-    handler=lambda args, **kw: execute_code(
-        code=args.get("code", ""),
-        task_id=kw.get("task_id"),
-        enabled_tools=kw.get("enabled_tools")),
+    handler=lambda **kwargs: execute_code(
+        code=kwargs.get("code", ""),
+        task_id=kwargs.get("task_id"),
+        enabled_tools=kwargs.get("enabled_tools")),
     check_fn=check_sandbox_requirements,
     emoji="🐍",
     max_result_size_chars=100_000,

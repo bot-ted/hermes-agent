@@ -781,9 +781,9 @@ VISION_ANALYZE_SCHEMA = {
 }
 
 
-def _handle_vision_analyze(args: Dict[str, Any], **kw: Any) -> Awaitable[str]:
-    image_url = args.get("image_url", "")
-    question = args.get("question", "")
+def _handle_vision_analyze(args: Dict[str, Any], **kwargs: Any) -> Awaitable[str]:
+    image_url = kwargs.get("image_url", "")
+    question = kwargs.get("question", "")
     full_prompt = (
         "Fully describe and explain everything about this image, then answer the "
         f"following question:\n\n{question}"

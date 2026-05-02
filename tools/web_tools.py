@@ -2133,7 +2133,7 @@ registry.register(
     name="web_search",
     toolset="web",
     schema=WEB_SEARCH_SCHEMA,
-    handler=lambda args, **kw: web_search_tool(args.get("query", ""), limit=args.get("limit", 5)),
+    handler=lambda **kwargs: web_search_tool(kwargs.get("query", ""), limit=kwargs.get("limit", 5)),
     check_fn=check_web_api_key,
     requires_env=_web_requires_env(),
     emoji="🔍",
@@ -2143,8 +2143,8 @@ registry.register(
     name="web_extract",
     toolset="web",
     schema=WEB_EXTRACT_SCHEMA,
-    handler=lambda args, **kw: web_extract_tool(
-        args.get("urls", [])[:5] if isinstance(args.get("urls"), list) else [], "markdown"),
+    handler=lambda **kwargs: web_extract_tool(
+        kwargs.get("urls", [])[:5] if isinstance(kwargs.get("urls"), list) else [], "markdown"),
     check_fn=check_web_api_key,
     requires_env=_web_requires_env(),
     is_async=True,

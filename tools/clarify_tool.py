@@ -132,10 +132,10 @@ registry.register(
     name="clarify",
     toolset="clarify",
     schema=CLARIFY_SCHEMA,
-    handler=lambda args, **kw: clarify_tool(
-        question=args.get("question", ""),
-        choices=args.get("choices"),
-        callback=kw.get("callback")),
+    handler=lambda **kwargs: clarify_tool(
+        question=kwargs.get("question", ""),
+        choices=kwargs.get("choices"),
+        callback=kwargs.get("callback")),
     check_fn=check_clarify_requirements,
     emoji="❓",
 )

@@ -1396,11 +1396,11 @@ PROCESS_SCHEMA = {
 }
 
 
-def _handle_process(args, **kw):
-    task_id = kw.get("task_id")
-    action = args.get("action", "")
+def _handle_process(**kwargs):
+    task_id = kwargs.get("task_id")
+    action = kwargs.get("action", "")
     # Coerce to string — some models send session_id as an integer
-    session_id = str(args.get("session_id", "")) if args.get("session_id") is not None else ""
+    session_id = str(kwargs.get("session_id", "")) if kwargs.get("session_id") is not None else ""
 
     if action == "list":
         return json.dumps({"processes": process_registry.list_sessions(task_id=task_id)}, ensure_ascii=False)
@@ -1411,15 +1411,15 @@ def _handle_process(args, **kw):
             return json.dumps(process_registry.poll(session_id), ensure_ascii=False)
         elif action == "log":
             return json.dumps(process_registry.read_log(
-                session_id, offset=args.get("offset", 0), limit=args.get("limit", 200)), ensure_ascii=False)
+                session_id, offset=kwargs.get("offset", 0), limit=kwargs.get("limit", 200)), ensure_ascii=False)
         elif action == "wait":
-            return json.dumps(process_registry.wait(session_id, timeout=args.get("timeout")), ensure_ascii=False)
+            return json.dumps(process_registry.wait(session_id, timeout=kwargs.get("timeout")), ensure_ascii=False)
         elif action == "kill":
             return json.dumps(process_registry.kill_process(session_id), ensure_ascii=False)
         elif action == "write":
-            return json.dumps(process_registry.write_stdin(session_id, str(args.get("data", ""))), ensure_ascii=False)
+            return json.dumps(process_registry.write_stdin(session_id, str(kwargs.get("data", ""))), ensure_ascii=False)
         elif action == "submit":
-            return json.dumps(process_registry.submit_stdin(session_id, str(args.get("data", ""))), ensure_ascii=False)
+            return json.dumps(process_registry.submit_stdin(session_id, str(kwargs.get("data", ""))), ensure_ascii=False)
         elif action == "close":
             return json.dumps(process_registry.close_stdin(session_id), ensure_ascii=False)
     return tool_error(f"Unknown process action: {action}. Use: list, poll, log, wait, kill, write, submit, close")

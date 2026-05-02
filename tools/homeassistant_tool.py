@@ -201,7 +201,7 @@ async def _async_call_service(
 
 
 # ---------------------------------------------------------------------------
-# Sync wrappers (handler signature: (args, **kw) -> str)
+# Sync wrappers (handler signature: (args, **kwargs) -> str)
 # ---------------------------------------------------------------------------
 
 def _run_async(coro):
@@ -221,10 +221,10 @@ def _run_async(coro):
         return asyncio.run(coro)
 
 
-def _handle_list_entities(args: dict, **kw) -> str:
+def _handle_list_entities(args: dict, **kwargs) -> str:
     """Handler for ha_list_entities tool."""
-    domain = args.get("domain")
-    area = args.get("area")
+    domain = kwargs.get("domain")
+    area = kwargs.get("area")
     try:
         result = _run_async(_async_list_entities(domain=domain, area=area))
         return json.dumps({"result": result})
@@ -233,9 +233,9 @@ def _handle_list_entities(args: dict, **kw) -> str:
         return tool_error(f"Failed to list entities: {e}")
 
 
-def _handle_get_state(args: dict, **kw) -> str:
+def _handle_get_state(args: dict, **kwargs) -> str:
     """Handler for ha_get_state tool."""
-    entity_id = args.get("entity_id", "")
+    entity_id = kwargs.get("entity_id", "")
     if not entity_id:
         return tool_error("Missing required parameter: entity_id")
     if not _ENTITY_ID_RE.match(entity_id):
@@ -248,10 +248,10 @@ def _handle_get_state(args: dict, **kw) -> str:
         return tool_error(f"Failed to get state for {entity_id}: {e}")
 
 
-def _handle_call_service(args: dict, **kw) -> str:
+def _handle_call_service(args: dict, **kwargs) -> str:
     """Handler for ha_call_service tool."""
-    domain = args.get("domain", "")
-    service = args.get("service", "")
+    domain = kwargs.get("domain", "")
+    service = kwargs.get("service", "")
     if not domain or not service:
         return tool_error("Missing required parameters: domain and service")
 
@@ -269,11 +269,11 @@ def _handle_call_service(args: dict, **kw) -> str:
             f"Blocked domains: {', '.join(sorted(_BLOCKED_DOMAINS))}"
         })
 
-    entity_id = args.get("entity_id")
+    entity_id = kwargs.get("entity_id")
     if entity_id and not _ENTITY_ID_RE.match(entity_id):
         return tool_error(f"Invalid entity_id format: {entity_id}")
 
-    data = args.get("data")
+    data = kwargs.get("data")
     if isinstance(data, str):
         try:
             data = json.loads(data) if data.strip() else None
@@ -326,9 +326,9 @@ async def _async_list_services(domain: Optional[str] = None) -> Dict[str, Any]:
     return {"count": len(result), "domains": result}
 
 
-def _handle_list_services(args: dict, **kw) -> str:
+def _handle_list_services(args: dict, **kwargs) -> str:
     """Handler for ha_list_services tool."""
-    domain = args.get("domain")
+    domain = kwargs.get("domain")
     try:
         result = _run_async(_async_list_services(domain=domain))
         return json.dumps({"result": result})

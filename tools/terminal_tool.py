@@ -2318,16 +2318,16 @@ TERMINAL_SCHEMA = {
 }
 
 
-def _handle_terminal(args, **kw):
+def _handle_terminal(**kwargs):
     return terminal_tool(
-        command=args.get("command"),
-        background=args.get("background", False),
-        timeout=args.get("timeout"),
-        task_id=kw.get("task_id"),
-        workdir=args.get("workdir"),
-        pty=args.get("pty", False),
-        notify_on_complete=args.get("notify_on_complete", False),
-        watch_patterns=args.get("watch_patterns"),
+        command=kwargs.get("command"),
+        background=kwargs.get("background", False),
+        timeout=kwargs.get("timeout"),
+        task_id=kwargs.get("task_id"),
+        workdir=kwargs.get("workdir"),
+        pty=kwargs.get("pty", False),
+        notify_on_complete=kwargs.get("notify_on_complete", False),
+        watch_patterns=kwargs.get("watch_patterns"),
     )
 
 

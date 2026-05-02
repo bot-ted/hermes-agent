@@ -270,8 +270,8 @@ registry.register(
     name="todo",
     toolset="todo",
     schema=TODO_SCHEMA,
-    handler=lambda args, **kw: todo_tool(
-        todos=args.get("todos"), merge=args.get("merge", False), store=kw.get("store")),
+    handler=lambda **kwargs: todo_tool(
+        todos=kwargs.get("todos"), merge=kwargs.get("merge", False), store=kwargs.get("store")),
     check_fn=check_todo_requirements,
     emoji="📋",
 )

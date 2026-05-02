@@ -916,8 +916,8 @@ _HANDLER_DEFAULTS = {
 
 def _make_handler(handler_fn):
     """Create a registry-compatible handler lambda for a discord handler."""
-    return lambda args, **kw: handler_fn(
-        **{k: args.get(k, v) for k, v in _HANDLER_DEFAULTS.items()},
+    return lambda **kwargs: handler_fn(
+        **{k: kwargs.get(k, v) for k, v in _HANDLER_DEFAULTS.items()},
     )
 
 

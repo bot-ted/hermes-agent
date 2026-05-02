@@ -76,10 +76,10 @@ def _ok(**fields: Any) -> str:
 # Handlers
 # ---------------------------------------------------------------------------
 
-def _handle_show(args: dict, **kw) -> str:
+def _handle_show(args: dict, **kwargs) -> str:
     """Read a task's full state: task row, parents, children, comments,
     runs (attempt history), and the last N events."""
-    tid = _default_task_id(args.get("task_id"))
+    tid = _default_task_id(kwargs.get("task_id"))
     if not tid:
         return tool_error(
             "task_id is required (or set HERMES_KANBAN_TASK in the env)"
@@ -147,16 +147,16 @@ def _handle_show(args: dict, **kw) -> str:
         return tool_error(f"kanban_show: {e}")
 
 
-def _handle_complete(args: dict, **kw) -> str:
+def _handle_complete(args: dict, **kwargs) -> str:
     """Mark the current task done with a structured handoff."""
-    tid = _default_task_id(args.get("task_id"))
+    tid = _default_task_id(kwargs.get("task_id"))
     if not tid:
         return tool_error(
             "task_id is required (or set HERMES_KANBAN_TASK in the env)"
         )
-    summary = args.get("summary")
-    metadata = args.get("metadata")
-    result = args.get("result")
+    summary = kwargs.get("summary")
+    metadata = kwargs.get("metadata")
+    result = kwargs.get("result")
     if not (summary or result):
         return tool_error(
             "provide at least one of: summary (preferred), result"
@@ -185,14 +185,14 @@ def _handle_complete(args: dict, **kw) -> str:
         return tool_error(f"kanban_complete: {e}")
 
 
-def _handle_block(args: dict, **kw) -> str:
+def _handle_block(args: dict, **kwargs) -> str:
     """Transition the task to blocked with a reason a human will read."""
-    tid = _default_task_id(args.get("task_id"))
+    tid = _default_task_id(kwargs.get("task_id"))
     if not tid:
         return tool_error(
             "task_id is required (or set HERMES_KANBAN_TASK in the env)"
         )
-    reason = args.get("reason")
+    reason = kwargs.get("reason")
     if not reason or not str(reason).strip():
         return tool_error("reason is required — explain what input you need")
     try:
@@ -213,14 +213,14 @@ def _handle_block(args: dict, **kw) -> str:
         return tool_error(f"kanban_block: {e}")
 
 
-def _handle_heartbeat(args: dict, **kw) -> str:
+def _handle_heartbeat(args: dict, **kwargs) -> str:
     """Signal that the worker is still alive during a long operation."""
-    tid = _default_task_id(args.get("task_id"))
+    tid = _default_task_id(kwargs.get("task_id"))
     if not tid:
         return tool_error(
             "task_id is required (or set HERMES_KANBAN_TASK in the env)"
         )
-    note = args.get("note")
+    note = kwargs.get("note")
     try:
         kb, conn = _connect()
         try:
@@ -237,18 +237,18 @@ def _handle_heartbeat(args: dict, **kw) -> str:
         return tool_error(f"kanban_heartbeat: {e}")
 
 
-def _handle_comment(args: dict, **kw) -> str:
+def _handle_comment(args: dict, **kwargs) -> str:
     """Append a comment to a task's thread."""
-    tid = args.get("task_id")
+    tid = kwargs.get("task_id")
     if not tid:
         return tool_error(
             "task_id is required (use the current task id if that's what "
             "you mean — pulls from env but kept explicit here)"
         )
-    body = args.get("body")
+    body = kwargs.get("body")
     if not body or not str(body).strip():
         return tool_error("body is required")
-    author = args.get("author") or os.environ.get("HERMES_PROFILE") or "worker"
+    author = kwargs.get("author") or os.environ.get("HERMES_PROFILE") or "worker"
     try:
         kb, conn = _connect()
         try:
@@ -261,31 +261,31 @@ def _handle_comment(args: dict, **kw) -> str:
         return tool_error(f"kanban_comment: {e}")
 
 
-def _handle_create(args: dict, **kw) -> str:
+def _handle_create(args: dict, **kwargs) -> str:
     """Create a child task. Orchestrator workers use this to fan out.
 
     ``parents`` can be a list of task ids; dependency-gated promotion
     works as usual.
     """
-    title = args.get("title")
+    title = kwargs.get("title")
     if not title or not str(title).strip():
         return tool_error("title is required")
-    assignee = args.get("assignee")
+    assignee = kwargs.get("assignee")
     if not assignee:
         return tool_error(
             "assignee is required — name the profile that should execute this "
             "task (the dispatcher will only spawn tasks with an assignee)"
         )
-    body = args.get("body")
-    parents = args.get("parents") or []
-    tenant = args.get("tenant") or os.environ.get("HERMES_TENANT")
-    priority = args.get("priority")
-    workspace_kind = args.get("workspace_kind") or "scratch"
-    workspace_path = args.get("workspace_path")
-    triage = bool(args.get("triage"))
-    idempotency_key = args.get("idempotency_key")
-    max_runtime_seconds = args.get("max_runtime_seconds")
-    skills = args.get("skills")
+    body = kwargs.get("body")
+    parents = kwargs.get("parents") or []
+    tenant = kwargs.get("tenant") or os.environ.get("HERMES_TENANT")
+    priority = kwargs.get("priority")
+    workspace_kind = kwargs.get("workspace_kind") or "scratch"
+    workspace_path = kwargs.get("workspace_path")
+    triage = bool(kwargs.get("triage"))
+    idempotency_key = kwargs.get("idempotency_key")
+    max_runtime_seconds = kwargs.get("max_runtime_seconds")
+    skills = kwargs.get("skills")
     if isinstance(skills, str):
         # Accept a single skill name as a string for convenience.
         skills = [skills]
@@ -333,10 +333,10 @@ def _handle_create(args: dict, **kw) -> str:
         return tool_error(f"kanban_create: {e}")
 
 
-def _handle_link(args: dict, **kw) -> str:
+def _handle_link(args: dict, **kwargs) -> str:
     """Add a parent→child dependency edge after the fact."""
-    parent_id = args.get("parent_id")
-    child_id = args.get("child_id")
+    parent_id = kwargs.get("parent_id")
+    child_id = kwargs.get("child_id")
     if not parent_id or not child_id:
         return tool_error("both parent_id and child_id are required")
     try:

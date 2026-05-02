@@ -2168,7 +2168,7 @@ def _make_read_resource_handler(server_name: str, tool_timeout: float):
                 "error": f"MCP server '{server_name}' is not connected"
             }, ensure_ascii=False)
 
-        uri = args.get("uri")
+        uri = kwargs.get("uri")
         if not uri:
             return tool_error("Missing required parameter 'uri'")
 
@@ -2291,10 +2291,10 @@ def _make_get_prompt_handler(server_name: str, tool_timeout: float):
                 "error": f"MCP server '{server_name}' is not connected"
             }, ensure_ascii=False)
 
-        name = args.get("name")
+        name = kwargs.get("name")
         if not name:
             return tool_error("Missing required parameter 'name'")
-        arguments = args.get("arguments", {})
+        arguments = kwargs.get("arguments", {})
 
         async def _call():
             async with server._rpc_lock:
