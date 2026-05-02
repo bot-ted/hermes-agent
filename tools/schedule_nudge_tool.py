@@ -100,14 +100,14 @@ def _get_current_session_info() -> tuple[Optional[str], Optional[str]]:
     Returns:
         Tuple of (session_id, session_key) or (None, None) if not available
     """
-    # Try environment variables first (set by gateway)
+    # Try environment variables first (set by gateway / CLI / cron)
     session_id = os.getenv("HERMES_SESSION_ID")
     session_key = os.getenv("HERMES_SESSION_KEY")
 
     if session_id and session_key:
         return session_id, session_key
 
-    # Try gateway context vars (more reliable in gateway context)
+    # Try gateway context vars (concurrency-safe, set via _set_session_env)
     try:
         from gateway.session_context import get_session_env
 
@@ -127,8 +127,22 @@ def _get_current_session_info() -> tuple[Optional[str], Optional[str]]:
             # session_id is not available from context vars by default
             # The nudge will still work but won't verify session_id
             return None, session_key
+
+        # Fallback: if session_key is set directly via contextvar (even without
+        # platform/chat_id), use it — this covers the gateway path where
+        # _set_session_env sets session_key but clear_session_vars may have
+        # reset platform/chat_id to "".
+        stored_key = get_session_env("HERMES_SESSION_KEY", "")
+        if stored_key:
+            return None, stored_key
     except Exception:
         pass
+
+    # Final fallback: os.environ session_key alone (gateway sets this at
+    # line ~12217 of run.py). Covers cases where contextvars were cleared
+    # but the process-global env var is still valid.
+    if session_key:
+        return None, session_key
 
     return None, None
 
