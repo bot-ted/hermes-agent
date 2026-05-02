@@ -43,3 +43,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Get image digest
+        id: digest
+        run: |
+          # Get the full image name with SHA tag
+          FULL_IMAGE="${{ steps.meta.outputs.image }}"
+          SHA_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep -oE 'sha-[a-f0-9]+' | head -1)
+          IMAGE_WITH_SHA="${FULL_IMAGE}:${SHA_TAG}"
+          
+          # Pull to ensure it's cached locally, then get the exact digest
+          docker pull "$IMAGE_WITH_SHA" 2>/dev/null || true
+          DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE_WITH_SHA" 2>/dev/null | cut -d@ -f2)
+          
+          echo "Built image: $IMAGE_WITH_SHA"
+          echo "Digest (SHA256): $DIGEST"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "full_image=$IMAGE_WITH_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Output summary
+        run: |
+          echo "## ✅ Image built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ steps.digest.outputs.full_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**SHA256:** \`${{ steps.digest.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
