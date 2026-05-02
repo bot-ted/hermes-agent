@@ -39,15 +39,15 @@ _NUDGE_DIR = get_hermes_home() / "nudges"
 _NUDGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _error(message: str) -> dict:
-    return {"error": message}
+def _error(message: str) -> str:
+    return json.dumps({"error": message}, ensure_ascii=False)
 
 
-def _success(message: str, data: dict = None) -> dict:
+def _success(message: str, data: dict = None) -> str:
     result = {"success": True, "message": message}
     if data:
         result.update(data)
-    return result
+    return json.dumps(result, ensure_ascii=False)
 
 
 def _nudge_file_path(session_key: str) -> Path:
