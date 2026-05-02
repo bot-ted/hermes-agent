@@ -1342,7 +1342,7 @@ class GatewayRunner:
         if session_key not in self._nudge_queue:
             self._nudge_queue[session_key] = []
         self._nudge_queue[session_key].append(content)
-        logger.debug("Queued nudge for %s (now %d pending)", session_key, len(self._nudge_queue[session_key]))
+        logger.info("Queued nudge for %s (now %d pending)", session_key, len(self._nudge_queue[session_key]))
 
     async def _trigger_nudge_continuation(self, source, session_key: str) -> None:
         """Trigger a continuation turn for pending nudges after agent completes.
@@ -13498,24 +13498,30 @@ def _process_pending_nudges(runner_ref, adapters, loop):
         import asyncio
         
         nudge_dir = get_hermes_home() / "nudges"
+        logger.debug("Nudge check: dir=%s exists=%s", nudge_dir, nudge_dir.exists())
         if not nudge_dir.exists():
             return
         
         # Get reference to the GatewayRunner
         runner = runner_ref() if runner_ref else None
         if not runner:
+            logger.debug("Nudge processing skipped: runner_ref=%s runner=%s", runner_ref, runner)
             return
+        
+        nudge_files = list(nudge_dir.glob("*.json"))
+        logger.debug("Nudge check: found %d file(s) in %s", len(nudge_files), nudge_dir)
         
         processed = 0
         triggered_sessions = []  # Sessions that need auto-trigger
         
-        for nudge_file in nudge_dir.glob("*.json"):
+        for nudge_file in nudge_files:
             try:
                 with open(nudge_file, "r") as f:
                     data = json.load(f)
                 
                 nudges = data.get("nudges", [])
                 if not nudges:
+                    logger.debug("Nudge file %s has no nudges, removing", nudge_file.name)
                     nudge_file.unlink()
                     continue
                 
@@ -13527,6 +13533,8 @@ def _process_pending_nudges(runner_ref, adapters, loop):
                 else:
                     session_key = safe_key
                 
+                logger.info("Processing nudge file %s → session %s (%d nudge(s))", nudge_file.name, session_key, len(nudges))
+                
                 # Get all nudge content
                 nudge_contents = []
                 for nudge in nudges:
@@ -13535,6 +13543,7 @@ def _process_pending_nudges(runner_ref, adapters, loop):
                         nudge_contents.append(content)
                 
                 if not nudge_contents:
+                    logger.debug("Nudge file %s has empty content, removing", nudge_file.name)
                     nudge_file.unlink()
                     continue
                 
@@ -13545,22 +13554,26 @@ def _process_pending_nudges(runner_ref, adapters, loop):
                 # at the start of the next agent turn
                 try:
                     runner._queue_nudge_for_session(session_key, combined_content)
-                    logger.info("Nudge queued for session %s", session_key)
+                    logger.info("Nudge queued for session %s (queue size: %d)", session_key, len(runner._nudge_queue.get(session_key, [])))
                     processed += 1
                     
                     # Check if we need to auto-trigger a new turn
                     # (only if no agent is currently running for this session)
                     if session_key not in runner._running_agents:
+                        logger.info("Session %s not running — scheduling auto-trigger", session_key)
                         triggered_sessions.append(session_key)
+                    else:
+                        logger.info("Session %s has running agent — nudge will be injected at next turn", session_key)
                         
                 except Exception as e:
                     logger.warning("Failed to queue nudge for %s: %s", session_key, e)
                 
                 # Clear processed nudges
                 nudge_file.unlink()
+                logger.debug("Removed nudge file %s", nudge_file.name)
                 
             except (json.JSONDecodeError, OSError) as e:
-                logger.debug("Error processing nudge file %s: %s", nudge_file, e)
+                logger.warning("Error processing nudge file %s: %s", nudge_file, e)
                 try:
                     nudge_file.unlink()
                 except OSError:
@@ -13569,15 +13582,18 @@ def _process_pending_nudges(runner_ref, adapters, loop):
         # Auto-trigger agent runs for sessions that have nudges but no running agent
         for session_key in triggered_sessions:
             try:
+                logger.info("Auto-triggering session %s (adapters=%d, loop=%s)", session_key, len(adapters) if adapters else 0, loop is not None)
                 _trigger_nudged_session(runner, adapters, loop, session_key)
             except Exception as e:
                 logger.warning("Failed to auto-trigger session %s: %s", session_key, e)
         
         if processed:
-            logger.info("Processed %d nudge(s), triggered %d session(s)", processed, len(triggered_sessions))
+            logger.info("Nudge processing complete: %d nudge(s) processed, %d session(s) triggered", processed, len(triggered_sessions))
+        else:
+            logger.debug("Nudge processing complete: no nudges found")
             
     except Exception as e:
-        logger.debug("Nudge processing error: %s", e)
+        logger.error("Nudge processing error: %s", e, exc_info=True)
 
 
 def _trigger_nudged_session(runner, adapters, loop, session_key):
@@ -13610,8 +13626,10 @@ def _trigger_nudged_session(runner, adapters, loop, session_key):
     # Get the adapter for this platform
     adapter = adapters.get(platform) if adapters else None
     if not adapter:
-        logger.debug("No adapter available for platform %s, cannot trigger %s", platform_str, session_key)
+        logger.warning("No adapter available for platform %s, cannot trigger %s", platform_str, session_key)
         return
+    
+    logger.info("Triggering nudge session: platform=%s chat_id=%s thread_id=%s", platform_str, chat_id, thread_id)
     
     # Create a synthetic source - use minimal required fields
     # The session store will resolve the full context
@@ -14035,11 +14053,12 @@ async def start_gateway(config: Optional[GatewayConfig] = None, replace: bool = 
     
     # Start background cron ticker so scheduled jobs fire automatically.
     # Pass the event loop so cron delivery can use live adapters (E2EE support).
+    import weakref as _weakref
     cron_stop = threading.Event()
     cron_thread = threading.Thread(
         target=_start_cron_ticker,
         args=(cron_stop,),
-        kwargs={"adapters": runner.adapters, "loop": asyncio.get_running_loop()},
+        kwargs={"runner_ref": _weakref.ref(runner), "adapters": runner.adapters, "loop": asyncio.get_running_loop()},
         daemon=True,
         name="cron-ticker",
     )
