@@ -119,6 +119,7 @@ def nudge_tool(
     action: str = "send",
     target: Optional[str] = None,
     content: Optional[str] = None,
+    **kwargs,  # Accept framework-injected params like task_id
 ) -> dict:
     """Manage nudges — inject messages into agent sessions.
 
