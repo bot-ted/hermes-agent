@@ -13585,7 +13585,7 @@ def _trigger_nudge_wake(runner, nudge: dict, adapters, loop):
     context = nudge.get("context", "")
     nudge_name = nudge.get("name", nudge.get("id", "unknown"))
 
-    if not session_key or not session_id:
+    if not session_key:
         logger.warning("Nudge %s missing session info, cannot trigger", nudge.get("id"))
         return
 
