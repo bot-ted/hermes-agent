@@ -54,9 +54,9 @@ RUN npm install --prefer-offline --no-audit && \
     npx playwright install --with-deps chromium --only-shell && \
     (cd web && npm install --prefer-offline --no-audit) && \
     (cd ui-tui && npm install --prefer-offline --no-audit) && \
-    npm cache clean --force && \
     npm install -g opencode-ai@latest && \
-    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    npm install -g pnpm && \
+    npm cache clean --force
 
 # ---------- Source code ----------
 # .dockerignore excludes node_modules, so the installs above survive.
