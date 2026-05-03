@@ -55,7 +55,7 @@ RUN npm install --prefer-offline --no-audit && \
     (cd web && npm install --prefer-offline --no-audit) && \
     (cd ui-tui && npm install --prefer-offline --no-audit) && \
     npm cache clean --force && \
-    npm install -g opencode-ai@latest
+    npm install -g opencode-ai@latest pnpm
 
 # ---------- Source code ----------
 # .dockerignore excludes node_modules, so the installs above survive.
