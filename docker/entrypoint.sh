@@ -87,6 +87,11 @@ if [ -d "$INSTALL_DIR/skills" ]; then
 fi
 
 # Final exec: two supported invocation patterns.
+
+# Map K8s secret env var to what opencode expects
+if [ -n "$OPENCODE_GO_API_KEY" ]; then
+    export OPENCODE_API_KEY="$OPENCODE_GO_API_KEY"
+fi
 #
 #   docker run <image>                 -> exec `hermes` with no args (legacy default)
 #   docker run <image> chat -q "..."   -> exec `hermes chat -q "..."` (legacy wrap)
