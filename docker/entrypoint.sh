@@ -86,6 +86,24 @@ if [ -d "$INSTALL_DIR/skills" ]; then
     python3 "$INSTALL_DIR/tools/skills_sync.py"
 fi
 
+# --- OpenCode config ---
+# Map OPENCODE_GO_API_KEY → GEMINI_API_KEY for OpenCode's Google Gemini
+# provider, and write a minimal config that enables it. "go" is the
+# provider name and serves many models.
+if [ -n "$OPENCODE_GO_API_KEY" ] && [ ! -f "$HERMES_HOME/.opencode.json" ]; then
+    export GEMINI_API_KEY="$OPENCODE_GO_API_KEY"
+    mkdir -p "$HERMES_HOME"
+    cat > "$HERMES_HOME/.opencode.json" << 'OPENCODE_EOF'
+{
+  "providers": {
+    "google": {
+      "disabled": false
+    }
+  }
+}
+OPENCODE_EOF
+fi
+
 # Final exec: two supported invocation patterns.
 #
 #   docker run <image>                 -> exec `hermes` with no args (legacy default)
