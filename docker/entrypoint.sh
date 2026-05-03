@@ -86,11 +86,6 @@ if [ -d "$INSTALL_DIR/skills" ]; then
     python3 "$INSTALL_DIR/tools/skills_sync.py"
 fi
 
-# --- OpenCode config ---
-# OPENCODE_GO_API_KEY is already set in the container (K8s secret).
-# Opencode natively recognizes the opencode-go provider — no extra config needed.
-# Models use format: opencode-go/<model-id> (e.g. opencode-go/qwen3.6-plus)
-
 # Final exec: two supported invocation patterns.
 #
 #   docker run <image>                 -> exec `hermes` with no args (legacy default)
