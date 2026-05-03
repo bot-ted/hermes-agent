@@ -87,22 +87,9 @@ if [ -d "$INSTALL_DIR/skills" ]; then
 fi
 
 # --- OpenCode config ---
-# Map OPENCODE_GO_API_KEY → GEMINI_API_KEY for OpenCode's Google Gemini
-# provider, and write a minimal config that enables it. "go" is the
-# provider name and serves many models.
-if [ -n "$OPENCODE_GO_API_KEY" ] && [ ! -f "$HERMES_HOME/.opencode.json" ]; then
-    export GEMINI_API_KEY="$OPENCODE_GO_API_KEY"
-    mkdir -p "$HERMES_HOME"
-    cat > "$HERMES_HOME/.opencode.json" << 'OPENCODE_EOF'
-{
-  "providers": {
-    "google": {
-      "disabled": false
-    }
-  }
-}
-OPENCODE_EOF
-fi
+# OPENCODE_GO_API_KEY is already set in the container (K8s secret).
+# Opencode natively recognizes the opencode-go provider — no extra config needed.
+# Models use format: opencode-go/<model-id> (e.g. opencode-go/qwen3.6-plus)
 
 # Final exec: two supported invocation patterns.
 #
