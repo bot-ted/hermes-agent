@@ -1841,6 +1841,7 @@ class AIAgent:
         compression_enabled = str(_compression_cfg.get("enabled", True)).lower() in ("true", "1", "yes")
         compression_target_ratio = float(_compression_cfg.get("target_ratio", 0.20))
         compression_protect_last = int(_compression_cfg.get("protect_last_n", 20))
+        self._flush_per_turn = str(_compression_cfg.get("flush_per_turn", False)).lower() in ("true", "1", "yes")
 
         # Read optional explicit context_length override for the auxiliary
         # compression model. Custom endpoints often cannot report this via
@@ -13332,6 +13333,11 @@ class AIAgent:
                     self._session_messages = messages
                     self._save_session_log(messages)
                     
+                    # Flush tool-call results to SQLite so the dashboard / session resume / hermes -c
+                    # see mid-turn progress even if the gateway crashes or pod is evicted.
+                    if self._flush_per_turn:
+                        self._flush_messages_to_session_db(messages, conversation_history)
+                    
                     # Continue loop for next response
                     continue
                 
@@ -13480,6 +13486,8 @@ class AIAgent:
                             messages.append(interim_msg)
                             self._session_messages = messages
                             self._save_session_log(messages)
+                            if self._flush_per_turn:
+                                self._flush_messages_to_session_db(messages, conversation_history)
                             continue
 
                         # ── Empty response retry ──────────────────────
@@ -13607,6 +13615,8 @@ class AIAgent:
                         messages.append(continue_msg)
                         self._session_messages = messages
                         self._save_session_log(messages)
+                        if self._flush_per_turn:
+                            self._flush_messages_to_session_db(messages, conversation_history)
                         continue
 
                     codex_ack_continuations = 0
