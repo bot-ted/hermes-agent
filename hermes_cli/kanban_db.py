@@ -76,6 +76,7 @@ import os
 import re
 import secrets
 import sqlite3
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -190,12 +191,12 @@ def get_current_board() -> str:
     1. ``HERMES_KANBAN_BOARD`` env var (set by the dispatcher on worker
        spawn, or manually for ad-hoc overrides).
     2. ``<root>/kanban/current`` on disk (set by ``hermes kanban boards
-       switch``).
+       switch``), but only when that board still exists.
     3. ``DEFAULT_BOARD`` (``"default"``).
 
-    A malformed slug at any step falls through to the next layer with a
-    best-effort warning — the dispatcher must never crash because a user
-    hand-edited a file.
+    A malformed or stale slug at any step falls through to the next layer
+    with a best-effort warning — the dispatcher must never crash because a
+    user hand-edited a file or removed a board directory.
     """
     env = os.environ.get("HERMES_KANBAN_BOARD", "").strip()
     if env:
@@ -212,7 +213,7 @@ def get_current_board() -> str:
             if val:
                 try:
                     normed = _normalize_board_slug(val)
-                    if normed:
+                    if normed and board_exists(normed):
                         return normed
                 except ValueError:
                     pass
@@ -1916,6 +1917,73 @@ def complete_task(
     return True
 
 
+def edit_completed_task_result(
+    conn: sqlite3.Connection,
+    task_id: str,
+    *,
+    result: str,
+    summary: Optional[str] = None,
+    metadata: Optional[dict] = None,
+) -> bool:
+    """Backfill the user-visible result for an already completed task."""
+    handoff_summary = summary if summary is not None else result
+    with write_txn(conn):
+        row = conn.execute(
+            "SELECT status FROM tasks WHERE id = ?", (task_id,),
+        ).fetchone()
+        if not row or row["status"] != "done":
+            return False
+        conn.execute(
+            "UPDATE tasks SET result = ? WHERE id = ?",
+            (result, task_id),
+        )
+        run = conn.execute(
+            """
+            SELECT id FROM task_runs
+             WHERE task_id = ?
+               AND outcome = 'completed'
+             ORDER BY COALESCE(ended_at, started_at, 0) DESC, id DESC
+             LIMIT 1
+            """,
+            (task_id,),
+        ).fetchone()
+        run_id = int(run["id"]) if run else None
+        if run_id is None:
+            run_id = _synthesize_ended_run(
+                conn, task_id,
+                outcome="completed",
+                summary=handoff_summary,
+                metadata=metadata,
+            )
+        else:
+            conn.execute(
+                "UPDATE task_runs SET summary = ? WHERE id = ?",
+                (handoff_summary, run_id),
+            )
+            if metadata is not None:
+                conn.execute(
+                    "UPDATE task_runs SET metadata = ? WHERE id = ?",
+                    (json.dumps(metadata, ensure_ascii=False), run_id),
+                )
+        ev_summary = (
+            handoff_summary.strip().splitlines()[0][:400]
+            if handoff_summary else ""
+        )
+        _append_event(
+            conn, task_id, "edited",
+            {
+                "fields": (
+                    ["result", "summary"]
+                    + (["metadata"] if metadata is not None else [])
+                ),
+                "result_len": len(result) if result else 0,
+                "summary": ev_summary or None,
+            },
+            run_id=run_id,
+        )
+    return True
+
+
 def block_task(
     conn: sqlite3.Connection,
     task_id: str,
@@ -2118,6 +2186,15 @@ class DispatchResult:
     spawned: list[tuple[str, str, str]] = field(default_factory=list)
     """List of ``(task_id, assignee, workspace_path)`` triples."""
     skipped_unassigned: list[str] = field(default_factory=list)
+    """Ready task ids skipped because they have no assignee at all.
+    Operator-actionable — usually a misfiled task waiting for routing."""
+    skipped_nonspawnable: list[str] = field(default_factory=list)
+    """Ready task ids skipped because their assignee names a control-plane
+    lane (a Claude Code terminal like ``orion-cc``) rather than a Hermes
+    profile. Expected steady-state on multi-lane setups; NOT an
+    operator-actionable failure. Tracked separately so health telemetry
+    can distinguish "real stuck" (nothing spawned but spawnable work
+    available) from "correctly idle" (nothing spawnable in the queue)."""
     crashed: list[str] = field(default_factory=list)
     """Task ids reclaimed because their worker PID disappeared."""
     auto_blocked: list[str] = field(default_factory=list)
@@ -2132,16 +2209,16 @@ def _pid_alive(pid: Optional[int]) -> bool:
     Cross-platform: uses ``os.kill(pid, 0)`` on POSIX and ``OpenProcess``
     on Windows. Returns False for falsy PIDs or on any OS error.
 
-    **Zombie handling (Linux):** ``os.kill(pid, 0)`` succeeds against
+    **Zombie handling:** ``os.kill(pid, 0)`` succeeds against
     zombie processes (post-exit, pre-reap) because the process table
     entry still exists. A worker that exits without being reaped by its
     parent would stay "alive" to the dispatcher forever. Dispatcher
     workers are started via ``start_new_session=True`` + intentional
     Popen handle abandonment, so init reaps them quickly — but during
     the window between exit and reap, we'd otherwise see stale "alive"
-    signals. On Linux we additionally peek at ``/proc/<pid>/status``
-    and treat ``State: Z`` as dead. On other POSIX or on Windows the
-    zombie check is a no-op.
+    signals. On Linux we peek at ``/proc/<pid>/status`` and treat
+    ``State: Z`` as dead. On macOS we ask ``ps`` for the BSD ``stat``
+    field and treat values containing ``Z`` as dead.
     """
     if not pid or pid <= 0:
         return False
@@ -2155,7 +2232,8 @@ def _pid_alive(pid: Optional[int]) -> bool:
         return True
     except OSError:
         return False
-    # Still here → kill(0) succeeded. Check for zombie on Linux.
+    # Still here → kill(0) succeeded. Check for zombie on platforms
+    # where we have a cheap, deterministic process-state probe.
     if sys.platform == "linux":
         try:
             with open(f"/proc/{int(pid)}/status", "r") as f:
@@ -2169,6 +2247,23 @@ def _pid_alive(pid: Optional[int]) -> bool:
             # proc entry gone → already reaped; treat as dead.
             # PermissionError shouldn't happen for our own children but
             # be defensive.
+            pass
+    elif sys.platform == "darwin":
+        try:
+            proc = subprocess.run(
+                ["ps", "-o", "stat=", "-p", str(int(pid))],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=1,
+                check=False,
+            )
+            if proc.returncode != 0:
+                return False
+            if "Z" in (proc.stdout or "").strip():
+                return False
+        except (OSError, subprocess.SubprocessError, TimeoutError):
+            # If the secondary probe fails, keep the kill(0) answer.
             pass
     return True
 
@@ -2459,6 +2554,38 @@ def _clear_spawn_failures(conn: sqlite3.Connection, task_id: str) -> None:
         )
 
 
+def has_spawnable_ready(conn: sqlite3.Connection) -> bool:
+    """Return True iff there is at least one ready+assigned+unclaimed task
+    whose assignee maps to a real Hermes profile.
+
+    Used by the gateway- and CLI-embedded dispatchers' health telemetry to
+    decide whether ``0 spawned`` is a "stuck" condition (real spawnable
+    work waiting) or a "correctly idle" condition (only control-plane
+    lanes like ``orion-cc`` / ``orion-research`` waiting on terminals
+    that pull tasks via ``claim_task`` directly).
+
+    Falls back to "any ready+assigned" if ``profile_exists`` is not
+    importable (e.g. partial install) — preserves the old behavior so
+    the warning still fires in degraded environments.
+    """
+    rows = conn.execute(
+        "SELECT DISTINCT assignee FROM tasks "
+        "WHERE status = 'ready' AND assignee IS NOT NULL "
+        "    AND claim_lock IS NULL"
+    ).fetchall()
+    if not rows:
+        return False
+    try:
+        from hermes_cli.profiles import profile_exists  # local import: avoids cycle
+    except Exception:
+        # Can't introspect — assume spawnable, preserve legacy behavior.
+        return True
+    for row in rows:
+        if profile_exists(row["assignee"]):
+            return True
+    return False
+
+
 def dispatch_once(
     conn: sqlite3.Connection,
     *,
@@ -2505,6 +2632,29 @@ def dispatch_once(
             break
         if not row["assignee"]:
             result.skipped_unassigned.append(row["id"])
+            continue
+        # Skip ready tasks whose assignee is not a real Hermes profile.
+        # `_default_spawn` invokes ``hermes -p <assignee>`` which fails
+        # with "Profile 'X' does not exist" when the assignee names a
+        # control-plane lane (e.g. an interactive Claude Code terminal
+        # like ``orion-cc`` / ``orion-research``) rather than a Hermes
+        # profile. Those task lanes are pulled by terminals via
+        # ``claim_task`` directly and should NEVER auto-spawn — the
+        # subprocess would crash on startup, get reaped as a zombie,
+        # the task would loop back to ``ready`` on next tick, and we'd
+        # burn CPU forever (#kanban-dispatcher-crash-loop 2026-05-05).
+        try:
+            from hermes_cli.profiles import profile_exists  # local import: avoids cycle
+        except Exception:
+            profile_exists = None  # type: ignore[assignment]
+        if profile_exists is not None and not profile_exists(row["assignee"]):
+            # Bucket separately from skipped_unassigned: the operator
+            # cannot fix this by assigning a profile (the assignee IS the
+            # intended owner — a terminal lane). Health telemetry uses
+            # this distinction to suppress spurious "stuck" warnings on
+            # multi-lane setups where the ready queue is steadily full
+            # of human-pulled work.
+            result.skipped_nonspawnable.append(row["id"])
             continue
         if dry_run:
             result.spawned.append((row["id"], row["assignee"], ""))
@@ -3213,30 +3363,38 @@ def read_worker_log(
 # ---------------------------------------------------------------------------
 
 def list_profiles_on_disk() -> list[str]:
-    """Return the set of named profiles discovered on disk.
+    """Return the set of assignee/profile names discovered on disk.
 
-    Reads ``~/.hermes/profiles/`` directly so this module has no import
-    dependency on ``hermes_cli.profiles`` (which pulls in a large chunk
-    of the CLI startup path). Only returns directories that contain a
-    ``config.yaml`` — a bare dir without config isn't a real profile.
+    Includes:
+    - named profiles under ``<default-root>/profiles/<name>/config.yaml``
+    - the implicit ``default`` profile when the default Hermes root exists
+
+    Reads profile paths directly so this module has no import dependency on
+    ``hermes_cli.profiles`` (which pulls in a large chunk of the CLI startup
+    path).
     """
     try:
         from hermes_constants import get_default_hermes_root
-        home = get_default_hermes_root() / "profiles"
+        default_root = get_default_hermes_root()
+        profiles_dir = default_root / "profiles"
     except Exception:
         return []
-    if not home.is_dir():
-        return []
-    names: list[str] = []
-    try:
-        for entry in sorted(home.iterdir()):
-            if not entry.is_dir():
-                continue
-            if (entry / "config.yaml").is_file():
-                names.append(entry.name)
-    except OSError:
-        return names
-    return names
+
+    names: set[str] = set()
+    if default_root.exists():
+        names.add("default")
+
+    if profiles_dir.is_dir():
+        try:
+            for entry in sorted(profiles_dir.iterdir()):
+                if not entry.is_dir():
+                    continue
+                if (entry / "config.yaml").is_file():
+                    names.add(entry.name)
+        except OSError:
+            pass
+
+    return sorted(names)
 
 
 def known_assignees(conn: sqlite3.Connection) -> list[dict]:
