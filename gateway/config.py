@@ -868,18 +868,6 @@ def load_gateway_config() -> GatewayConfig:
                     _tg_extra = _tg_plat.setdefault("extra", {})
                     _tg_extra.setdefault("require_mention", _tl_require_mention)
 
-            # Bridge top-level require_mention to Telegram when the telegram: section
-            # does not already provide one.  Users often write "require_mention: true"
-            # at the top level alongside group_sessions_per_user, expecting it to work
-            # the same way (#3979).
-            _tl_require_mention = yaml_cfg.get("require_mention")
-            if _tl_require_mention is not None:
-                _tg_section = yaml_cfg.get("telegram") or {}
-                if "require_mention" not in _tg_section:
-                    _tg_plat = platforms_data.setdefault(Platform.TELEGRAM.value, {})
-                    _tg_extra = _tg_plat.setdefault("extra", {})
-                    _tg_extra.setdefault("require_mention", _tl_require_mention)
-
             # Telegram settings → env vars (env vars take precedence)
             telegram_cfg = yaml_cfg.get("telegram", {})
             if isinstance(telegram_cfg, dict):
