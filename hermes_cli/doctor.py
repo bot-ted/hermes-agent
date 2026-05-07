@@ -197,7 +197,7 @@ def _build_apikey_providers_list() -> list:
 
     Tuple format: (name, env_vars, default_url, base_env, supports_models_endpoint)
     Base list augmented with any ProviderProfile with auth_type="api_key" not
-    already present — adding providers/*.py is sufficient to get into doctor.
+    already present — adding plugins/model-providers/<name>/ is sufficient to get into doctor.
     """
     _static = [
         ("Z.AI / GLM",      ("GLM_API_KEY", "ZAI_API_KEY", "Z_AI_API_KEY"), "https://api.z.ai/api/paas/v4/models", "GLM_BASE_URL", True),
@@ -1225,6 +1225,16 @@ def run_doctor(args):
                     headers=_headers,
                     timeout=10,
                 )
+                if (
+                    _pname == "Alibaba/DashScope"
+                    and not _base
+                    and _resp.status_code == 401
+                ):
+                    _resp = httpx.get(
+                        "https://dashscope.aliyuncs.com/compatible-mode/v1/models",
+                        headers=_headers,
+                        timeout=10,
+                    )
                 if _resp.status_code == 200:
                     print(f"\r  {color('✓', Colors.GREEN)} {_label}                          ")
                 elif _resp.status_code == 401:
