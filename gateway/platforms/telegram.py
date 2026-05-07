@@ -369,10 +369,14 @@ class TelegramAdapter(BasePlatformAdapter):
 
     @classmethod
     def _message_thread_id_for_typing(cls, thread_id: Optional[str]) -> Optional[int]:
-        # Mirrors _message_thread_id_for_send: the General forum topic (thread id
-        # "1") is represented as "no thread id" on the wire. User-created topics
-        # keep their real id so typing stays scoped to that topic.
-        if not thread_id or str(thread_id) == cls._GENERAL_TOPIC_THREAD_ID:
+        # Asymmetric with _message_thread_id_for_send on purpose. Telegram's
+        # sendMessage and sendChatAction treat thread id "1" (the forum General
+        # topic) differently: sends reject message_thread_id=1 and must omit it,
+        # but sendChatAction needs message_thread_id=1 to place the typing
+        # bubble in the General topic (omitting it hides the bubble entirely
+        # from the client's view of that topic). Preserve the real id here —
+        # sends still map "1" → None via _message_thread_id_for_send.
+        if not thread_id:
             return None
         return int(thread_id)
 
@@ -2771,6 +2775,20 @@ class TelegramAdapter(BasePlatformAdapter):
             return {str(part).strip() for part in raw if str(part).strip()}
         return {part.strip() for part in str(raw).split(",") if part.strip()}
 
+    def _telegram_allowed_chats(self) -> set[str]:
+        """Return the whitelist of group/supergroup chat IDs the bot will respond in.
+
+        When non-empty, group messages from chats NOT in this set are silently
+        ignored — even if the bot is @mentioned.  DMs are never filtered.
+        Empty set means no restriction (fully backward compatible).
+        """
+        raw = self.config.extra.get("allowed_chats")
+        if raw is None:
+            raw = os.getenv("TELEGRAM_ALLOWED_CHATS", "")
+        if isinstance(raw, list):
+            return {str(part).strip() for part in raw if str(part).strip()}
+        return {part.strip() for part in str(raw).split(",") if part.strip()}
+
     def _telegram_ignored_threads(self) -> set[int]:
         raw = self.config.extra.get("ignored_threads")
         if raw is None:
@@ -2919,13 +2937,16 @@ class TelegramAdapter(BasePlatformAdapter):
         """Apply Telegram group trigger rules.
 
         DMs remain unrestricted. Group/supergroup messages are accepted when:
+        - the chat passes the ``allowed_chats`` whitelist (when set)
         - the chat is explicitly allowlisted in ``free_response_chats``
         - ``require_mention`` is disabled
         - the message replies to the bot
         - the bot is @mentioned
         - the text/caption matches a configured regex wake-word pattern
 
-        When ``require_mention`` is enabled, slash commands are not given
+        When ``allowed_chats`` is non-empty, it acts as a hard gate — messages
+        from any chat not in the list are ignored regardless of the other
+        rules.  When ``require_mention`` is enabled, slash commands are not given
         special treatment — they must pass the same mention/reply checks
         as any other group message.  Users can still trigger commands via
         the Telegram bot menu (``/command@botname``) or by explicitly
@@ -2934,6 +2955,14 @@ class TelegramAdapter(BasePlatformAdapter):
         """
         if not self._is_group_chat(message):
             return True
+        # allowed_chats check (whitelist — must pass before other gating).
+        # When set, group messages from chats NOT in this whitelist are
+        # silently ignored, even if @mentioned.  DMs are already excluded above.
+        allowed = self._telegram_allowed_chats()
+        if allowed:
+            chat_id_str = str(getattr(getattr(message, "chat", None), "id", ""))
+            if chat_id_str not in allowed:
+                return False
         thread_id = getattr(message, "message_thread_id", None)
         if thread_id is not None:
             try:
