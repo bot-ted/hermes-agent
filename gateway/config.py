@@ -271,15 +271,23 @@ class PlatformConfig:
     # - "first": Only first chunk threads to user's message (default)
     # - "all": All chunks in multi-part replies thread to user's message
     reply_to_mode: str = "first"
-    
+
+    # Whether the gateway is allowed to send "♻️ Gateway online" /
+    # "♻ Gateway restarted" lifecycle notifications on this platform.
+    # Default True preserves prior behavior. Set False on platforms used
+    # by end users (e.g. Slack) where operator-flavored restart pings are
+    # noise; keep True for back-channels where the operator wants them.
+    gateway_restart_notification: bool = True
+
     # Platform-specific settings
     extra: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "enabled": self.enabled,
             "extra": self.extra,
             "reply_to_mode": self.reply_to_mode,
+            "gateway_restart_notification": self.gateway_restart_notification,
         }
         if self.token:
             result["token"] = self.token
@@ -288,19 +296,22 @@ class PlatformConfig:
         if self.home_channel:
             result["home_channel"] = self.home_channel.to_dict()
         return result
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PlatformConfig":
         home_channel = None
         if "home_channel" in data:
             home_channel = HomeChannel.from_dict(data["home_channel"])
-        
+
         return cls(
             enabled=_coerce_bool(data.get("enabled"), False),
             token=data.get("token"),
             api_key=data.get("api_key"),
             home_channel=home_channel,
             reply_to_mode=data.get("reply_to_mode", "first"),
+            gateway_restart_notification=_coerce_bool(
+                data.get("gateway_restart_notification"), True
+            ),
             extra=data.get("extra", {}),
         )
 
@@ -1141,10 +1152,17 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
     
     # WhatsApp (typically uses different auth mechanism)
     whatsapp_enabled = os.getenv("WHATSAPP_ENABLED", "").lower() in ("true", "1", "yes")
-    if whatsapp_enabled:
-        if Platform.WHATSAPP not in config.platforms:
-            config.platforms[Platform.WHATSAPP] = PlatformConfig()
-        config.platforms[Platform.WHATSAPP].enabled = True
+    whatsapp_disabled_explicitly = os.getenv("WHATSAPP_ENABLED", "").lower() in ("false", "0", "no")
+    if Platform.WHATSAPP in config.platforms:
+        # YAML config exists — respect explicit disable
+        wa_cfg = config.platforms[Platform.WHATSAPP]
+        if whatsapp_disabled_explicitly:
+            wa_cfg.enabled = False
+        elif whatsapp_enabled:
+            wa_cfg.enabled = True
+        # else: keep whatever the YAML set
+    elif whatsapp_enabled:
+        config.platforms[Platform.WHATSAPP] = PlatformConfig(enabled=True)
     whatsapp_home = os.getenv("WHATSAPP_HOME_CHANNEL")
     if whatsapp_home and Platform.WHATSAPP in config.platforms:
         config.platforms[Platform.WHATSAPP].home_channel = HomeChannel(

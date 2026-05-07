@@ -799,6 +799,12 @@ def switch_model(
                         )
 
         # --- Step d: Aggregator catalog search ---
+        # Track whether the live catalog of the CURRENT provider resolved the
+        # model — if so, step e must not second-guess and switch providers.
+        # Critical for flat-namespace resellers like opencode-go / opencode-zen
+        # whose live /v1/models returns bare IDs (e.g. "deepseek-v4-flash") that
+        # coincidentally match entries in native providers' static catalogs.
+        resolved_in_current_catalog = False
         if is_aggregator(target_provider) and not resolved_alias:
             catalog = list_provider_models(target_provider)
             if catalog:
@@ -806,6 +812,7 @@ def switch_model(
                 for mid in catalog:
                     if mid.lower() == new_model_lower:
                         new_model = mid
+                        resolved_in_current_catalog = True
                         break
                 else:
                     for mid in catalog:
@@ -813,6 +820,7 @@ def switch_model(
                             _, bare = mid.split("/", 1)
                             if bare.lower() == new_model_lower:
                                 new_model = mid
+                                resolved_in_current_catalog = True
                                 break
 
         # --- Step e: detect_provider_for_model() as last resort ---
@@ -825,6 +833,7 @@ def switch_model(
             target_provider == current_provider
             and not is_custom
             and not resolved_alias
+            and not resolved_in_current_catalog
         ):
             detected = detect_provider_for_model(new_model, current_provider)
             if detected:
@@ -1628,7 +1637,8 @@ def list_authenticated_providers(
                         groups[group_key]["models"].append(m)
 
         _section4_emitted_slugs: set = set()
-        for grp in groups.values():
+        for grp_key, grp in groups.items():
+            api_url, api_key = grp_key
             slug = grp["slug"]
             # If the slug is already claimed by a built-in / overlay /
             # user-provider row (sections 1-3), skip this custom group
@@ -1666,6 +1676,18 @@ def list_authenticated_providers(
             _grp_url_norm = _pair_key[1]
             if _grp_url_norm and _grp_url_norm in _builtin_endpoints:
                 continue
+            # Live model discovery from custom provider endpoints (matches
+            # Section 3 behavior for user ``providers:`` entries).
+            if api_url and api_key:
+                try:
+                    from hermes_cli.models import fetch_api_models
+
+                    live_models = fetch_api_models(api_key, api_url)
+                    if live_models:
+                        grp["models"] = live_models
+                        grp["total_models"] = len(live_models)
+                except Exception:
+                    pass
             results.append({
                 "slug": slug,
                 "name": grp["name"],
