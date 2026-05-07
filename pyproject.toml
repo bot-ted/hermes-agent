@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-agent"
-version = "0.12.0"
+version = "0.13.0"
 description = "The self-improving AI agent — creates skills from experience, improves them during use, and runs anywhere"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -164,3 +164,6 @@ exclude = ["tinker-atropos"]
 [tool.ruff]
 exclude = ["tinker-atropos"]
 select = [] # disable all lints for now, until we've wrangled typechecks a bit more :3
+
+[tool.uv]
+exclude-newer = "7 days"
