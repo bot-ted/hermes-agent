@@ -151,40 +151,6 @@
     return Object.assign({}, patch, { result: summary, summary });
   }
 
-  // Diagnostic kind labels for the events-tab callout. Event kinds emitted
-  // by the kernel get a human-readable header when we detect them in the
-  // events list; add new entries here as new diagnostic event kinds land.
-  const DIAGNOSTIC_EVENT_LABELS = {
-    completion_blocked_hallucination: "⚠ Completion blocked — phantom card ids",
-    suspected_hallucinated_references: "⚠ Prose referenced phantom card ids",
-  };
-
-  function isDiagnosticEvent(kind) {
-    return Object.prototype.hasOwnProperty.call(DIAGNOSTIC_EVENT_LABELS, kind);
-  }
-
-  function phantomIdsFromEvent(ev) {
-    if (!ev || !ev.payload) return [];
-    const p = ev.payload;
-    return p.phantom_cards || p.phantom_refs || [];
-  }
-
-  function withCompletionSummary(patch, count) {
-    if (!patch || patch.status !== "done") return patch;
-    const label = count && count > 1 ? `${count} selected task(s)` : "this task";
-    const value = window.prompt(
-      `Completion summary for ${label}. This is stored as the task result.`,
-      "",
-    );
-    if (value === null) return null;
-    const summary = value.trim();
-    if (!summary) {
-      window.alert("Completion summary is required before marking a task done.");
-      return null;
-    }
-    return Object.assign({}, patch, { result: summary, summary });
-  }
-
   const API = "/api/plugins/kanban";
   const MIME_TASK = "text/x-hermes-task";
 
@@ -1932,7 +1898,7 @@
           type: "checkbox",
           className: "hermes-kanban-col-check",
           title: "Select all tasks in this column",
-          "aria-label": `Select all tasks in ${COLUMN_LABEL[props.column.name] || props.column.name}`,
+          "aria-label": `Select all tasks in ${colLabel || props.column.name}`,
           checked: props.column.tasks.length > 0 && props.column.tasks.every(function (t) { return props.selectedIds.has(t.id); }),
           onChange: function (e) {
             e.stopPropagation();
