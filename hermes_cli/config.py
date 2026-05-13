@@ -477,6 +477,12 @@ DEFAULT_CONFIG = {
         # threshold before escalating to a full timeout.  The warning fires
         # once per run and does not interrupt the agent.  0 = disable warning.
         "gateway_timeout_warning": 900,
+        # Maximum time (seconds) the gateway will block an agent waiting for
+        # a clarify-tool response from the user.  Hit this and the agent
+        # unblocks with "[user did not respond within Xm]" so it can adapt
+        # rather than pinning the running-agent guard forever.  CLI clarify
+        # blocks indefinitely (input() is synchronous) and ignores this.
+        "clarify_timeout": 600,
         # Periodic "still working" notification interval (seconds).
         # Sends a status message every N seconds so the user knows the
         # agent hasn't died during long tasks.  0 = disable notifications.
@@ -628,6 +634,12 @@ DEFAULT_CONFIG = {
             # so the server maps it to a persistent Firefox profile automatically.
             # When false (default), each session gets a random userId (ephemeral).
             "managed_persistence": False,
+            # Optional externally managed Camofox identity. Useful when another
+            # app owns the visible browser and Hermes should operate in it.
+            "user_id": "",
+            "session_key": "",
+            # Rehydrate tab_id from Camofox before creating a new tab.
+            "adopt_existing_tab": False,
         },
     },
 
@@ -732,6 +744,27 @@ DEFAULT_CONFIG = {
         "cache_ttl": "5m",
         "long_lived_prefix": True,
         "long_lived_ttl": "1h",
+    },
+
+    # OpenRouter-specific settings.
+    # response_cache: enable OpenRouter response caching (X-OpenRouter-Cache header).
+    #   When enabled, identical requests return cached responses for free (zero billing).
+    #   This is separate from Anthropic prompt caching and works alongside it.
+    #   See: https://openrouter.ai/docs/guides/features/response-caching
+    # response_cache_ttl: how long cached responses remain valid, in seconds (1-86400).
+    #   Default 300 (5 minutes). Only used when response_cache is enabled.
+    # min_coding_score: knob for the openrouter/pareto-code router (0.0-1.0).
+    #   Only applied when model.model is "openrouter/pareto-code". Higher
+    #   values route to stronger (more expensive) coders; lower values open
+    #   up cheaper, faster options. Default 0.65 lands on the mid-tier
+    #   coder on the current Pareto frontier. Empty string = let OpenRouter
+    #   pick the strongest available coder (router's documented default
+    #   when the plugins block is omitted).
+    #   See: https://openrouter.ai/docs/guides/routing/routers/pareto-router
+    "openrouter": {
+        "response_cache": True,
+        "response_cache_ttl": 300,
+        "min_coding_score": 0.65,
     },
 
     # OpenRouter-specific settings.
@@ -917,6 +950,14 @@ DEFAULT_CONFIG = {
         "persistent_output": True,
         "persistent_output_max_lines": 200,
         "inline_diffs": True,     # Show inline diff previews for write actions (write_file, patch, skill_manage)
+        # File-mutation verifier footer.  When true (default), the agent
+        # appends a one-line advisory to its final response whenever a
+        # write_file / patch call failed during the turn and was never
+        # superseded by a successful write to the same path.  This catches
+        # the "batch of parallel patches, half fail, model claims success"
+        # class of over-claim that otherwise forces users to run
+        # `git status` to verify edits landed.  Set false to suppress.
+        "file_mutation_verifier": True,
         "show_cost": False,       # Show $ cost in the status bar (off by default)
         "skin": "default",
         # UI language for static user-facing messages (approval prompts, a
@@ -1483,6 +1524,53 @@ DEFAULT_CONFIG = {
         # disable backups entirely, set ``pre_update_backup: false`` above
         # rather than ``backup_keep: 0``.
         "backup_keep": 5,
+    },
+
+    # Language Server Protocol — semantic diagnostics from real
+    # language servers (pyright, gopls, rust-analyzer, etc.) wired
+    # into the post-write lint check used by ``write_file`` and
+    # ``patch``.
+    #
+    # LSP is gated on git-workspace detection: when the agent's
+    # cwd (or the file being edited) is inside a git worktree, LSP
+    # runs against that workspace.  When neither is in a git repo,
+    # LSP stays dormant and the in-process syntax check is the only
+    # tier — handy for Telegram/Discord chats where the cwd is the
+    # user's home directory.
+    "lsp": {
+        # Master toggle.  Setting this to false disables the entire
+        # subsystem — no servers spawn, no background event loop, no
+        # cost.
+        "enabled": True,
+
+        # Diagnostic-wait mode for the post-write check.
+        # ``"document"`` waits up to ``wait_timeout`` seconds for the
+        # current file's diagnostics; ``"full"`` additionally requests
+        # workspace-wide diagnostics (slower).
+        "wait_mode": "document",
+        "wait_timeout": 5.0,
+
+        # How to handle missing server binaries.
+        # ``"auto"`` — try to install via npm/go/pip into
+        #              ``<HERMES_HOME>/lsp/bin/`` on first use.
+        # ``"manual"`` — only use binaries already on PATH.
+        # ``"off"`` — alias for ``manual``.
+        "install_strategy": "auto",
+
+        # Per-server overrides.  Each key is a server_id from the
+        # registry (``pyright``, ``typescript``, ``gopls``,
+        # ``rust-analyzer``, etc.) and accepts:
+        #   disabled: true
+        #     — skip this server even when its extensions match
+        #   command: ["full/path/to/server", "--stdio"]
+        #     — pin a custom binary path; bypasses auto-install
+        #   env: {"KEY": "value"}
+        #     — extra env vars passed to the spawned process
+        #   initialization_options: {...}
+        #     — merged into the LSP ``initializationOptions``
+        # Empty by default; the registry defaults work for typical
+        # setups.
+        "servers": {},
     },
 
     # Config schema version - bump this when adding new required fields
