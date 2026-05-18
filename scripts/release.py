@@ -228,6 +228,7 @@ AUTHOR_MAP = {
     "magicray1217@users.noreply.github.com": "Magicray1217",
     "pingchesu@users.noreply.github.com": "pingchesu",
     "rames-jusso@users.noreply.github.com": "Rames-Jusso",
+    "ted@bot-ted.com": "bot-ted",
     # LINE messaging plugin (synthesis PR)
     "32443648+leepoweii@users.noreply.github.com": "leepoweii",
     "openclaw@liyangchen.me": "liyoungc",
