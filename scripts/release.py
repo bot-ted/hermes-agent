@@ -219,6 +219,15 @@ AUTHOR_MAP = {
     "tony@tonysimons.dev": "asimons81",
     "jetha@google.com": "jethac",
     "jani@0xhoneyjar.xyz": "deep-name",
+    # Daily sync 2026-05-18 — missing noreply mappings
+    "JiaDe-Wu@users.noreply.github.com": "JiaDe-Wu",
+    "abhinav11082001-stack@users.noreply.github.com": "abhinav11082001-stack",
+    "amethystani@users.noreply.github.com": "amethystani",
+    "liuhao1024@users.noreply.github.com": "liuhao1024",
+    "luoyuctl@users.noreply.github.com": "luoyuctl",
+    "magicray1217@users.noreply.github.com": "Magicray1217",
+    "pingchesu@users.noreply.github.com": "pingchesu",
+    "rames-jusso@users.noreply.github.com": "Rames-Jusso",
     # LINE messaging plugin (synthesis PR)
     "32443648+leepoweii@users.noreply.github.com": "leepoweii",
     "openclaw@liyangchen.me": "liyoungc",
