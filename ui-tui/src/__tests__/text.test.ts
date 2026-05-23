@@ -13,7 +13,6 @@ import {
   lastCotTrailIndex,
   parseToolTrailResultLine,
   pasteTokenLabel,
-  sanitizeAnsiForRender,
   sameToolTrailGroup,
   sanitizeAnsiForRender,
   splitToolDuration,
