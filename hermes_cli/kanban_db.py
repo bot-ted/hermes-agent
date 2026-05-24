@@ -3094,6 +3094,93 @@ def _cleanup_worker_tmux(conn: sqlite3.Connection, task_id: str) -> None:
         pass  # best-effort — never block completion
 
 
+# ---------------------------------------------------------------------------
+# First-use tip for scratch workspaces
+# ---------------------------------------------------------------------------
+#
+# Scratch workspaces are intentionally ephemeral — ``_cleanup_workspace``
+# removes them as soon as ``complete_task`` runs.  New users often don't
+# realize that and lose worker output (community report, May 2026).  The
+# behavior is right; the lack of warning is the bug.
+#
+# On the FIRST scratch workspace materialization across the whole install
+# we:
+#   1. Log a warning line on the dispatcher logger.
+#   2. Append a ``tip_scratch_workspace`` event on the task so it's visible
+#      via ``hermes kanban show <id>`` and the dashboard.
+#   3. Touch a sentinel file under ``kanban_home() / '.scratch_tip_shown'``
+#      so we don't repeat the tip — once you know, you know.
+#
+# Scope is per-install, not per-board: a user creating a second board
+# already learned the lesson on board #1.
+
+_SCRATCH_TIP_SENTINEL_NAME = ".scratch_tip_shown"
+
+_SCRATCH_TIP_MESSAGE = (
+    "scratch workspaces are ephemeral — they're deleted when the task "
+    "completes. Use --workspace worktree: (git worktree) or "
+    "--workspace dir:/abs/path (existing dir) to preserve worker output."
+)
+
+
+def _scratch_tip_sentinel_path() -> Path:
+    """Path to the per-install scratch-workspace-tip sentinel file."""
+    return kanban_home() / _SCRATCH_TIP_SENTINEL_NAME
+
+
+def _scratch_tip_shown() -> bool:
+    """True iff the scratch-workspace tip has already been emitted on this
+    install. Best-effort — any error means we re-emit, which is the safer
+    failure mode for a help message."""
+    try:
+        return _scratch_tip_sentinel_path().exists()
+    except OSError:
+        return False
+
+
+def _mark_scratch_tip_shown() -> None:
+    """Touch the sentinel so future scratch workspaces stay silent.
+
+    Best-effort: a failure here just means the tip might appear once more,
+    which is preferable to crashing dispatch over a help message.
+    """
+    try:
+        path = _scratch_tip_sentinel_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch(exist_ok=True)
+    except OSError:
+        pass
+
+
+def _maybe_emit_scratch_tip(
+    conn: sqlite3.Connection,
+    task_id: str,
+    workspace_kind: Optional[str],
+) -> None:
+    """Emit the first-use scratch-workspace tip exactly once per install.
+
+    Called from the dispatcher right after a scratch workspace is
+    materialized. No-op for ``worktree`` / ``dir`` workspaces (they're
+    preserved by design) and no-op after the sentinel exists.
+    """
+    if (workspace_kind or "scratch") != "scratch":
+        return
+    if _scratch_tip_shown():
+        return
+    try:
+        _log.warning("kanban: %s (task %s)", _SCRATCH_TIP_MESSAGE, task_id)
+        with write_txn(conn):
+            _append_event(
+                conn, task_id, "tip_scratch_workspace",
+                {"message": _SCRATCH_TIP_MESSAGE},
+            )
+    except Exception:
+        # Best-effort — never block the spawn loop over a help message.
+        pass
+    finally:
+        _mark_scratch_tip_shown()
+
+
 def edit_completed_task_result(
     conn: sqlite3.Connection,
     task_id: str,
@@ -3214,6 +3301,77 @@ def block_task(
             )
         _append_event(conn, task_id, "blocked", {"reason": reason}, run_id=run_id)
         return True
+
+
+
+def promote_task(
+    conn: sqlite3.Connection,
+    task_id: str,
+    *,
+    actor: str,
+    reason: Optional[str] = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> tuple[bool, Optional[str]]:
+    """Manually promote a `todo` or `blocked` task to `ready`.
+
+    Mirrors the automatic promotion done by ``recompute_ready`` but
+    drives it from a deliberate operator action with an audit-trail
+    entry. Refuses to promote if any parent dep is not in a terminal
+    state (`done`/`archived`) unless ``force=True``. Does NOT change
+    assignee or claim state. Returns ``(True, None)`` on success and
+    ``(False, reason)`` if refused. ``dry_run=True`` validates the
+    promotion would succeed without mutating state.
+    """
+    row = conn.execute(
+        "SELECT status FROM tasks WHERE id = ?", (task_id,)
+    ).fetchone()
+    if row is None:
+        return False, f"task {task_id} not found"
+
+    cur_status = row["status"]
+    if cur_status not in ("todo", "blocked"):
+        return False, (
+            f"task {task_id} is {cur_status!r}; promote only applies to "
+            f"'todo' or 'blocked'"
+        )
+
+    if not force:
+        parents = conn.execute(
+            "SELECT t.id, t.status FROM tasks t "
+            "JOIN task_links l ON l.parent_id = t.id "
+            "WHERE l.child_id = ?",
+            (task_id,),
+        ).fetchall()
+        unsatisfied = [
+            p["id"] for p in parents
+            if p["status"] not in ("done", "archived")
+        ]
+        if unsatisfied:
+            return False, (
+                f"unsatisfied parent dependencies: "
+                f"{', '.join(unsatisfied)} (use --force to override)"
+            )
+
+    if dry_run:
+        return True, None
+
+    with write_txn(conn):
+        upd = conn.execute(
+            "UPDATE tasks SET status = 'ready' "
+            "WHERE id = ? AND status IN ('todo', 'blocked')",
+            (task_id,),
+        )
+        if upd.rowcount != 1:
+            return False, f"task {task_id} status changed during promotion"
+        _append_event(
+            conn,
+            task_id,
+            "promoted_manual",
+            {"actor": actor, "reason": reason, "forced": force},
+        )
+
+    return True, None
 
 
 def unblock_task(conn: sqlite3.Connection, task_id: str) -> bool:
@@ -5025,6 +5183,7 @@ def dispatch_once(
             continue
         # Persist the resolved workspace path so the worker can cd there.
         set_workspace_path(conn, claimed.id, str(workspace))
+        _maybe_emit_scratch_tip(conn, claimed.id, claimed.workspace_kind)
         _spawn = spawn_fn if spawn_fn is not None else _default_spawn
         try:
             # Back-compat: older spawn_fn signatures accept only
@@ -5103,6 +5262,7 @@ def dispatch_once(
             continue
         # Persist the resolved workspace path so the worker can cd there.
         set_workspace_path(conn, claimed.id, str(workspace))
+        _maybe_emit_scratch_tip(conn, claimed.id, claimed.workspace_kind)
         # Force-load sdlc-review skill for review agents.  The
         # _default_spawn function already auto-loads kanban-worker, and
         # appends task.skills via --skills.  Setting task.skills here
