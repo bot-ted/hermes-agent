@@ -1278,6 +1278,23 @@ AUTHOR_MAP = {
     "erik.engervall@gmail.com": "erikengervall",  # PR #28774 (firecrawl integration tag)
     "egilewski@egilewski.com": "egilewski",  # PR #30432 (MEDIA path traversal fix, GHSA-jmf9-9729-7pp8)
     "edison@mcclean.codes": "McClean-Edison",  # PR #29817 (register_auxiliary_task plugin API)
+    # New contributors from upstream sync (2026-05-24)
+    "JiaDe-Wu@users.noreply.github.com": "JiaDe-Wu",
+    "abhinav11082001-stack@users.noreply.github.com": "abhinav11082001-stack",
+    "amethystani@users.noreply.github.com": "amethystani",
+    "baxter@bitreserve.ai": "BaxBit",
+    "chris.eth@qq.com": "duyua9",
+    "ethie@nous": "ethernet",
+    "justinccdev@gmail.com": "justincc",
+    "liuhao1024@users.noreply.github.com": "liuhao1024",
+    "luoyuctl@users.noreply.github.com": "luoyuctl",
+    "magicray1217@users.noreply.github.com": "Magicray1217",
+    "pepelax@users.noreply.github.com": "pepelax",
+    "pingchesu@users.noreply.github.com": "pingchesu",
+    "pochi-gio@users.noreply.github.com": "pochi-gio",
+    "rames-jusso@users.noreply.github.com": "Rames Jusso",
+    "weichangyuwcy@gmail.com": "chyuwei",
+    "ted@shahmeer.sh": "bot-ted",
 }
 
 
