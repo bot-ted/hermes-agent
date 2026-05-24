@@ -47,6 +47,7 @@ ACP_REGISTRY_MANIFEST = REPO_ROOT / "acp_registry" / "agent.json"
 AUTHOR_MAP = {
     # teknium (multiple emails)
     "teknium1@gmail.com": "teknium1",
+    "kenyon1977@gmail.com": "kenyonxu",
     "cipherframe@users.noreply.github.com": "CipherFrame",
     "me@promplate.dev": "CNSeniorious000",
     "yichengqiao21@gmail.com": "YarrowQiao",
@@ -71,12 +72,14 @@ AUTHOR_MAP = {
     "70629228+shaun0927@users.noreply.github.com": "shaun0927",
     "98262967+Bihruze@users.noreply.github.com": "Bihruze",
     "189280367+Lempkey@users.noreply.github.com": "Lempkey",
+    "34853915+m0n3r0@users.noreply.github.com": "m0n3r0",
     "leovillalbajr@gmail.com": "Lempkey",
     "nidhi2894@gmail.com": "nidhi-singh02",
     "30312689+aashizpoudel@users.noreply.github.com": "aashizpoudel",
     "oleksii.lisikh@gmail.com": "olisikh",
     "jithendranaidunara@gmail.com": "JithendraNara",
     "jeremy@geocaching.com": "outdoorsea",
+    "54763683+thedavidmurray@users.noreply.github.com": "thedavidmurray",
     "leone.parise@gmail.com": "leoneparise",
     "mr@shu.io": "mrshu",
     "adam.manning@gmail.com": "am423",
@@ -85,7 +88,9 @@ AUTHOR_MAP = {
     "yanglongwei06@gmail.com": "Alex-yang00",
     "teknium@nousresearch.com": "teknium1",
     "markuscontasul@gmail.com": "Glucksberg",
+    "80581902+Glucksberg@users.noreply.github.com": "Glucksberg",
     "piyushvp1@gmail.com": "thelumiereguy",
+    "pnascimento9596@gmail.com": "pnascimento9596",
     "dskwelmcy@163.com": "dskwe",
     "421774554@qq.com": "wuli666",
     "twebefy@gmail.com": "tw2818",
@@ -1272,6 +1277,24 @@ AUTHOR_MAP = {
     "vanthinh6886@gmail.com": "vanthinh6886",  # PR #28018 salvage (yaml/flock/atomic write guards)
     "erik.engervall@gmail.com": "erikengervall",  # PR #28774 (firecrawl integration tag)
     "egilewski@egilewski.com": "egilewski",  # PR #30432 (MEDIA path traversal fix, GHSA-jmf9-9729-7pp8)
+    "edison@mcclean.codes": "McClean-Edison",  # PR #29817 (register_auxiliary_task plugin API)
+    # New contributors from upstream sync (2026-05-24)
+    "JiaDe-Wu@users.noreply.github.com": "JiaDe-Wu",
+    "abhinav11082001-stack@users.noreply.github.com": "abhinav11082001-stack",
+    "amethystani@users.noreply.github.com": "amethystani",
+    "baxter@bitreserve.ai": "BaxBit",
+    "chris.eth@qq.com": "duyua9",
+    "ethie@nous": "ethernet",
+    "justinccdev@gmail.com": "justincc",
+    "liuhao1024@users.noreply.github.com": "liuhao1024",
+    "luoyuctl@users.noreply.github.com": "luoyuctl",
+    "magicray1217@users.noreply.github.com": "Magicray1217",
+    "pepelax@users.noreply.github.com": "pepelax",
+    "pingchesu@users.noreply.github.com": "pingchesu",
+    "pochi-gio@users.noreply.github.com": "pochi-gio",
+    "rames-jusso@users.noreply.github.com": "Rames Jusso",
+    "weichangyuwcy@gmail.com": "chyuwei",
+    "ted@shahmeer.sh": "bot-ted",
 }
 
 
