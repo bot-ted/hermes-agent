@@ -37,7 +37,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  IMAGE_NAME: nousresearch/hermes-agent
+  IMAGE_NAME: ${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io/bot-ted/hermes-agent' || 'nousresearch/hermes-agent' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -242,11 +242,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io' || 'docker.io' }}
+          username: ${{ github.repository == 'bot-ted/hermes-agent' && github.actor || secrets.DOCKERHUB_USERNAME }}
+          password: ${{ github.repository == 'bot-ted/hermes-agent' && secrets.GITHUB_TOKEN || secrets.DOCKERHUB_TOKEN }}
 
       # Read the git revision label off the current :main manifest, then
       # use `git merge-base --is-ancestor` to check whether our commit is
@@ -259,7 +260,7 @@ jobs:
         id: main_check
         run: |
           set -euo pipefail
-          image=nousresearch/hermes-agent
+          image="${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io/bot-ted/hermes-agent' || 'nousresearch/hermes-agent' }}"
 
           image_json=$(
             docker buildx imagetools inspect "${image}:main" \
@@ -389,17 +390,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io' || 'docker.io' }}
+          username: ${{ github.repository == 'bot-ted/hermes-agent' && github.actor || secrets.DOCKERHUB_USERNAME }}
+          password: ${{ github.repository == 'bot-ted/hermes-agent' && secrets.GITHUB_TOKEN || secrets.DOCKERHUB_TOKEN }}
 
       - name: Decide whether to move :latest
         id: latest_check
         run: |
           set -euo pipefail
-          image=nousresearch/hermes-agent
+          image="${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io/bot-ted/hermes-agent' || 'nousresearch/hermes-agent' }}"
 
           image_json=$(
             docker buildx imagetools inspect "${image}:latest" \
@@ -465,7 +467,7 @@ jobs:
           RELEASE_TAG: ${{ needs.merge.outputs.release_tag }}
         run: |
           set -euo pipefail
-          image=nousresearch/hermes-agent
+          image="${{ github.repository == 'bot-ted/hermes-agent' && 'ghcr.io/bot-ted/hermes-agent' || 'nousresearch/hermes-agent' }}"
           docker buildx imagetools create \
             --tag "${image}:latest" \
             "${image}:${RELEASE_TAG}"
