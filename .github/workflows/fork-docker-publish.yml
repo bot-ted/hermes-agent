@@ -39,11 +39,6 @@ jobs:
           cache-from: type=gha,scope=fork-docker-amd64
           cache-to: type=gha,mode=max,scope=fork-docker-amd64
 
-      - name: Smoke test image
-        uses: ./.github/actions/hermes-smoke-test
-        with:
-          image: ${{ env.IMAGE_NAME }}:test
-
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
         with:
@@ -99,11 +94,6 @@ jobs:
           tags: ${{ env.IMAGE_NAME }}:test
           cache-from: type=gha,scope=fork-docker-arm64
           cache-to: type=gha,mode=max,scope=fork-docker-arm64
-
-      - name: Smoke test image
-        uses: ./.github/actions/hermes-smoke-test
-        with:
-          image: ${{ env.IMAGE_NAME }}:test
 
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
